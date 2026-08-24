@@ -1,15 +1,12 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'alex_api_service.dart';
 
-/// File d'attente de lecture vocale : chaque texte est envoyé au backend
-/// (`/vocal`, Edge TTS) puis joué à la suite du précédent — même principe
-/// de file que `speechQueue` / `playNextInQueue` côté PWA, réécrit avec
-/// `just_audio`.
 class TtsQueuePlayer {
   TtsQueuePlayer(this._api);
 
@@ -50,15 +47,9 @@ class TtsQueuePlayer {
       if (bytes == null || bytes.isEmpty) {
         return _playNext();
       }
-      final dir = await getTemporaryDirectory();
-      final path = '${dir.path}/alex_tts_${_fileCounter++}.mp3';
-      final file = File(path);
-      await file.writeAsBytes(bytes, flush: true);
-      if (_stopped) return;
-
-      await _player.setFilePath(path);
-      await _player.play(); // attend la fin de la lecture avant de continuer
-      unawaited(file.delete());
+      final dataUrl = 'data:audio/mpeg;base64,${base64Encode(bytes)}';
+      await _player.setUrl(dataUrl);
+      if (!_stopped) await _player.play();
       return _playNext();
     } catch (_) {
       return _playNext();
