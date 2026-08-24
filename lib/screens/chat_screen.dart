@@ -87,6 +87,12 @@ class _ChatScreenState extends State<ChatScreen> {
           SafeArea(
             child: Column(
               children: [
+                Container(
+                  width: double.infinity,
+                  color: Colors.green,
+                  padding: const EdgeInsets.all(4),
+                  child: const Text('DEBUG: APP LOADED', style: TextStyle(color: Colors.white, fontSize: 14)),
+                ),
                 Builder(
                   builder: (context) => GlassAppBar(
                     onMenuTap: () => Scaffold.of(context).openDrawer(),
