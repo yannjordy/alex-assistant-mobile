@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../services/speech_service.dart';
@@ -26,6 +29,7 @@ class _ChatInputBarState extends State<ChatInputBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final SpeechService _speech = SpeechService();
+  final ImagePicker _imagePicker = ImagePicker();
 
   bool _hasText = false;
   bool _listening = false;
@@ -83,6 +87,61 @@ class _ChatInputBarState extends State<ChatInputBar> {
     setState(() => _listening = true);
   }
 
+  Future<void> _pickAndAnalyzeImage() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _AttachmentSheet(
+        onPick: (s) => Navigator.of(context).pop(s),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    final XFile? file = await _imagePicker.pickImage(source: source, imageQuality: 85, maxWidth: 1600);
+    if (file == null || !mounted) return;
+
+    final bytes = await file.readAsBytes();
+    final mimeType = file.mimeType ?? 'image/jpeg';
+    final dataUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+    if (!mounted) return;
+
+    final question = await _askQuestionDialog();
+    if (question == null || !mounted) return;
+
+    context.read<ChatProvider>().sendImageMessage(imageDataUrl: dataUrl, question: question);
+  }
+
+  Future<String?> _askQuestionDialog() async {
+    final controller = TextEditingController(text: 'Décris cette image en français.');
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF141008),
+        title: const Text('Que veux-tu demander ?', style: TextStyle(color: AppColors.cream, fontSize: 16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          style: const TextStyle(color: AppColors.cream),
+          decoration: const InputDecoration(
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.amber)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Annuler', style: TextStyle(color: AppColors.creamDim)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(controller.text.trim()),
+            child: const Text('Envoyer', style: TextStyle(color: AppColors.amberSoft)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -95,6 +154,11 @@ class _ChatInputBarState extends State<ChatInputBar> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
+            _RoundIconButton(
+              icon: Icons.add_photo_alternate_outlined,
+              color: AppColors.creamDim,
+              onTap: widget.isStreaming ? null : _pickAndAnalyzeImage,
+            ),
             _RoundIconButton(
               icon: _listening ? Icons.mic_rounded : Icons.mic_none_rounded,
               color: _listening ? AppColors.amber : AppColors.creamDim,
@@ -138,6 +202,40 @@ class _ChatInputBarState extends State<ChatInputBar> {
                 onTap: _hasText ? _send : null,
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachmentSheet extends StatelessWidget {
+  const _AttachmentSheet({required this.onPick});
+
+  final ValueChanged<ImageSource> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        child: GlassPanel(
+          borderRadius: 22,
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_camera_outlined, color: AppColors.amberSoft),
+                title: const Text('Prendre une photo', style: TextStyle(color: AppColors.cream)),
+                onTap: () => onPick(ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.amberSoft),
+                title: const Text('Choisir dans la galerie', style: TextStyle(color: AppColors.cream)),
+                onTap: () => onPick(ImageSource.gallery),
+              ),
+            ],
+          ),
         ),
       ),
     );

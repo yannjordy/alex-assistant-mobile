@@ -1,5 +1,5 @@
 name: alex_mobile
-description: "Alex — assistant personnel intelligent."
+description: "Alex — assistant personnel intelligent. Application mobile Flutter (verre 2026)."
 publish_to: 'none'
 version: 2.0.0+1
 
@@ -21,12 +21,23 @@ dependencies:
   google_fonts: ^6.2.1
   flutter_markdown_plus: ^1.0.6
 
-  # Carte
+  # Voix
+  speech_to_text: ^7.0.0
+  just_audio: ^0.9.40
+  path_provider: ^2.1.4
+
+  # Vision (photo + question)
+  image_picker: ^1.1.2
+
+  # Carte MapLibre GL JS (sans clé API)
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
 
-  # WebSocket
+  # Évènements temps réel (WebSocket /wake : notifications, code_changed)
   web_socket_channel: ^3.0.1
+
+  # MapLibre GL JS intégré via WebView (carte sans clé API)
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +46,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/icons/
