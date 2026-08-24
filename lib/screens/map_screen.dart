@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 import '../models/tools_models.dart';
 import '../services/alex_api_service.dart';
@@ -10,11 +9,6 @@ import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
 import '../theme/glass.dart';
 
-/// Écran carte avec MapLibre GL JS intégré via WebView.
-///
-/// Affiche une carte interactive stylée MapLibre (dark theme, sans clé API)
-/// avec les markers enregistrés par Alex. Si le WebView n'est pas disponible,
-/// fallback sur flutter_map avec les tuiles OSM standard.
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
 
@@ -25,7 +19,6 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   late Future<List<MapMarkerData>> _future;
   final MapController _mapController = MapController();
-  bool _useWebView = true;
 
   @override
   void initState() {
@@ -42,14 +35,6 @@ class _MapScreenState extends State<MapScreen> {
         elevation: 0,
         title: Text('Carte d\'Alex', style: AppTheme.wordmark(fontSize: 16)),
         actions: [
-          IconButton(
-            icon: Icon(
-              _useWebView ? Icons.map_rounded : Icons.map_outlined,
-              color: AppColors.creamDim,
-            ),
-            onPressed: () => setState(() => _useWebView = !_useWebView),
-            tooltip: _useWebView ? 'Vue MapLibre' : 'Vue OSM',
-          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppColors.creamDim),
             onPressed: () => setState(() => _future = context.read<AlexApiService>().getMapData()),
@@ -70,13 +55,9 @@ class _MapScreenState extends State<MapScreen> {
               child: Text('Aucun lieu enregistré pour le moment.', style: TextStyle(color: AppColors.creamFaint)),
             );
           }
-
           return Stack(
             children: [
-              if (_useWebView)
-                _MapLibreWebView(markers: markers)
-              else
-                _FlutterMapView(markers: markers, mapController: _mapController),
+              _FlutterMapView(markers: markers, mapController: _mapController),
               Positioned(
                 left: 14,
                 right: 14,
@@ -98,127 +79,6 @@ class _MapScreenState extends State<MapScreen> {
   }
 }
 
-/// Vue MapLibre GL JS intégrée via WebView (tuiles sans clé API).
-class _MapLibreWebView extends StatefulWidget {
-  const _MapLibreWebView({required this.markers});
-
-  final List<MapMarkerData> markers;
-
-  @override
-  State<_MapLibreWebView> createState() => _MapLibreWebViewState();
-}
-
-class _MapLibreWebViewState extends State<_MapLibreWebView> {
-  late final WebViewController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadHtmlString(_buildHtml());
-  }
-
-  String _buildHtml() {
-    final markersJson = widget.markers.map((m) => '''
-      {
-        "lngLat": [${m.lng}, ${m.lat}],
-        "label": "${_escapeHtml(m.label)}",
-        "color": "${m.color}"
-      }
-    ''').join(',');
-
-    final center = widget.markers.isNotEmpty
-        ? [widget.markers.first.lng, widget.markers.first.lat]
-        : [2.3522, 48.8566]; // Paris par défaut
-
-    return '''
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.js"></script>
-<style>
-  body { margin: 0; padding: 0; }
-  #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-</style>
-</head>
-<body>
-<div id="map"></div>
-<script>
-const map = new maplibregl.Map({
-  container: 'map',
-  style: {
-    version: 8,
-    sources: {
-      osm: {
-        type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256,
-        attribution: '© OpenStreetMap contributors'
-      }
-    },
-    layers: [{
-      id: 'osm',
-      type: 'raster',
-      source: 'osm'
-    }],
-    glyphs: 'https://fonts.openmaptiles.org/{fontstack}/{range}.pbf'
-  },
-  center: $center,
-  zoom: 13,
-  pitch: 45,
-  bearing: -17
-});
-
-map.addControl(new maplibregl.NavigationControl(), 'top-right');
-
-const markers = [$markersJson];
-
-markers.forEach(m => {
-  const el = document.createElement('div');
-  el.style.cssText = 'width:28px;height:28px;border-radius:50%;background:' + m.color + ';border:2px solid rgba(0,0,0,0.5);box-shadow:0 2px 8px rgba(0,0,0,0.4);';
-  const label = document.createElement('div');
-  label.textContent = m.label;
-  label.style.cssText = 'position:absolute;top:-24px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;white-space:nowrap;';
-  el.appendChild(label);
-
-  new maplibregl.Marker({ element: el })
-    .setLngLat(m.lngLat)
-    .addTo(map);
-});
-
-if (markers.length > 1) {
-  const bounds = new maplibregl.LngLatBounds();
-  markers.forEach(m => bounds.extend(m.lngLat));
-  map.fitBounds(bounds, { padding: 50 });
-} else if (markers.length === 1) {
-  map.setCenter(markers[0].lngLat);
-  map.setZoom(15);
-}
-</script>
-</body>
-</html>''';
-  }
-
-  String _escapeHtml(String text) {
-    return text
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return WebViewWidget(controller: _controller);
-  }
-}
-
-/// Fallback flutter_map sans WebView.
 class _FlutterMapView extends StatelessWidget {
   const _FlutterMapView({required this.markers, required this.mapController});
 
