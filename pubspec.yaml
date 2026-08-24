@@ -1,0 +1,60 @@
+name: alex_mobile
+description: "Alex — assistant personnel intelligent. Application mobile Flutter (verre 2026)."
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # État & réseau
+  provider: ^6.1.2
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
+  uuid: ^4.5.0
+
+  # Rendu & typographie
+  google_fonts: ^6.2.1
+  flutter_markdown_plus: ^1.0.6
+
+  # Voix
+  speech_to_text: ^7.0.0
+  just_audio: ^0.9.40
+  path_provider: ^2.1.4
+
+  # Vision (photo + question)
+  image_picker: ^1.1.2
+
+  # Carte MapLibre GL JS (sans clé API)
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Évènements temps réel (WebSocket /wake : notifications, code_changed)
+  web_socket_channel: ^3.0.1
+
+  # MapLibre GL JS intégré via WebView (carte sans clé API)
+  webview_flutter: ^4.10.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+
+# Génère les icônes natives Android/iOS à partir du logo existant d'Alex.
+# Lancer : dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/icon-512.png"
+  adaptive_icon_background: "#000000"
+  adaptive_icon_foreground: "assets/icons/icon-512.png"
